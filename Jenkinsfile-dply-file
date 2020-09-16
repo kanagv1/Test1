@@ -1,0 +1,69 @@
+pipeline {
+	agent {
+		label 'master-only'
+	}
+	
+	//static parameters for the build
+	environment {
+	
+		FAILURE_EMAIL_TO = "venu.kanagala@gmail.com"
+		SUCCESS_EMAIL_TO = "venu.kanagala@gmail.com"
+		
+	}
+	
+	//Load tools needed to perform build
+	tools {
+		nodejs 'node-default'
+		maven 'mvn-default'
+	}
+	stages {
+		stage('Build & Deploy') {
+			steps {
+				sh '''#!/bin/bash
+				
+				source /opt/IBM/iib/10.0.0.11/server/bin/mqsiprofile
+				Application_Name=$Application
+				Environment=$Environment
+				echo $Environment
+				cp -R /webdata/jenkins/wokspace/$jenkinsJobName/COMMON/* /webdata/jenkins/wokspace/$jenkinsJobName/$Application_Name/
+				LD="LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+				export LD
+				export PATH=$PATH:/opt/mqm/samp/bin:/opt/mqm/bin:
+				chmod -R o+rwx /webdata/jenkins/wokspace/$jenkinsJobName
+				rm -rf  /webdata/jenkins/wokspace/$jenkinsJobName/$Application_Name/NI_CL_$Application_Name_LIB
+				ant -f  /webdata/jenkins/wokspace/$jenkinsJobName/COMMON/NI_CL_BUILD_SCRIPT/build/build_master.xml -DENV=buildmaster_IIB$Environment -DjobName=$jenkinsJobName -DApplication=$Application_Name package
+				
+				#Baroverride
+				chmod -R a+rwx /webdata/jenkins/wokspace/$jenkinsJobName/$Application_Name/
+				chmod -R a+rwx /webdata/jenkins/wokspace/$jenkinsJobName/$Application_Name/Deploy/Bar/>/dev/null
+				ant -f  /webdata/jenkins/wokspace/$jenkinsJobName/COMMON/NI_CL_BUILD_SCRIPT/build/build_master.xml -DENV=buildmaster_IIB$Environment -DjobName=$jenkinsJobName -DApplication=$Application_Name baroverride
+				
+				
+				chmod -R a+rwx /webdata/jenkins/wokspace/$jenkinsJobName/$Application_Name/Deploy/Bar/>/dev/null
+				ant -f  /webdata/jenkins/wokspace/$jenkinsJobName/COMMON/NI_CL_BUILD_SCRIPT/build/build_master.xml -DENV=buildmaster_IIB$Environment -DjobName=$jenkinsJobName -DApplication=$Application_Name deploy
+				'''
+				
+			}
+		}
+		
+		Stage(Tranfer xml & Clear cache'){
+			steps {
+					sh ''' Application_Name=$Application
+					Tranfer_Xml=$TranferXml
+					jenkinsJobName=$jenkinsJobName
+					Environment=$Environment
+					Sh Scripts/Xmltransfer-clearcache.sh $Environment $Application_Name $jenkinsJobName $Tranfer_Xml'''
+					}
+				}
+			}
+			
+			post {
+				success {
+					script {
+						
+						def common = "IIB Dev Deployment"
+						}
+					}
+				}
+	}
+				
