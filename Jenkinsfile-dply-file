@@ -46,7 +46,7 @@ pipeline {
 			}
 		}
 		
-		Stage(Tranfer xml & Clear cache'){
+		Stage('Tranfer xml & Clear cache'){
 			steps {
 					sh ''' Application_Name=$Application
 					Tranfer_Xml=$TranferXml
